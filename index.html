@@ -23,9 +23,10 @@ button:focus-visible{outline:3px solid var(--ovt);outline-offset:2px}
 #zoom.on{display:flex}
 #zoom img{max-width:90vw;max-height:72vh;border:10px solid #fff;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
 #zc{color:#fff;font-size:18px;text-align:center;line-height:1.5}
-#pad{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);display:none;flex-direction:column;gap:12px;z-index:4}
+#pad{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);display:none;flex-direction:column;align-items:center;gap:8px;z-index:4}
+#pad .r{display:flex;gap:10px}
 @media (hover:none) and (pointer:coarse){#pad{display:flex}}
-#pad button{width:72px;height:72px;border-radius:50%;font-size:28px;padding:0;touch-action:none;user-select:none;-webkit-user-select:none;opacity:.9}
+#pad button{width:62px;height:62px;border-radius:50%;font-size:28px;padding:0;touch-action:none;user-select:none;-webkit-user-select:none;opacity:.9}
 #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 112px);display:none;max-width:90vw;text-align:center;pointer-events:none;font-weight:600}
 #toast{white-space:normal;width:90vw;text-align:center}
 .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -44,7 +45,7 @@ textarea,#nm{width:100%;box-sizing:border-box;border-radius:10px;border:1px soli
 <div id="msg" class="card"></div>
 <div id="zoom"><img id="zi" alt="생일 케이크 그림"><div id="zc">🎂 수진이네 하우스의 생일 케이크<br><small>아무 곳이나 누르면 닫혀요</small></div><div id="zn" style="display:none;gap:12px"><button id="zp">◀ 이전</button><button id="zx">다음 ▶</button></div></div>
 <div id="cap" class="card"></div>
-<div id="pad"><button id="gf" aria-label="앞으로">▲</button><button id="gb" aria-label="뒤로">▼</button></div>
+<div id="pad"><button id="gf" aria-label="앞으로">▲</button><div class="r"><button id="gl" aria-label="왼쪽으로 돌기">◀</button><button id="gr" aria-label="오른쪽으로 돌기">▶</button></div><button id="gb" aria-label="뒤로">▼</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -373,9 +374,15 @@ el.addEventListener('click',e=>{if(!dn||Math.hypot(e.clientX-dn[0],e.clientY-dn[
  if(ray.intersectObjects([btn,btnBase,btnLabel])[0]){if(Math.hypot(px-BP.x,pz-BP.z)>9)say('🐶 버튼 가까이 가서 눌러보세요',2.5);else feed()}});
 
 // ---- touch walk buttons
+if('ontouchstart' in window||navigator.maxTouchPoints>0||innerWidth<900)document.getElementById('pad').style.display='flex';
 [['gf',-1],['gb',1]].forEach(([id,v])=>{const b=document.getElementById(id);
  b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);mv.y=v};
  b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>{if(mv.y===v)mv.y=0};
+ b.oncontextmenu=e=>e.preventDefault()});
+let turnV=0;
+[['gl',1],['gr',-1]].forEach(([id,v])=>{const b=document.getElementById(id);
+ b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);turnV=v};
+ b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>{if(turnV===v)turnV=0};
  b.oncontextmenu=e=>e.preventDefault()});
 
 // ---- big trees
@@ -506,6 +513,7 @@ const toast=document.getElementById('toast');let wasIn=false,tt=0;
 const clock=new THREE.Clock();
 function tick(){requestAnimationFrame(tick);
  const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;U.value=t;
+ yaw+=turnV*dt*1.8;
  let f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-mv.y;
  let s=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+mv.x;
  const l=Math.max(1,Math.hypot(f,s));f/=l;s/=l;const sp=(keys.ShiftLeft||keys.ShiftRight?8:4)*dt;
