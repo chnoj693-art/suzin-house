@@ -38,7 +38,7 @@ textarea,#nm{width:100%;box-sizing:border-box;border-radius:10px;border:1px soli
 </style>
 </head>
 <body>
-<div class="hud" id="top"><div class="card"><b>🌼 꽃들판 생일 메타버스</b> <small style="opacity:.6">v7 · 방향버튼</small></div><div class="btns"><button id="lt">✉️ 편지</button><button id="tp">🏠 쉼터</button><button id="mu">🔊</button></div></div>
+<div class="hud" id="top"><div class="card"><b>🌼 꽃들판 생일 메타버스</b> <small style="opacity:.6">v8 · 시작점 원위치</small></div><div class="btns"><button id="lt">✉️ 편지</button><button id="tp">🏠 쉼터</button><button id="mu">🔊</button></div></div>
 <div class="hud" id="bot"><div class="card" id="hint">PC: WASD·방향키 이동(Shift 달리기), 드래그로 둘러보기<br>모바일: 화면을 드래그해서 둘러보고, ▲ 버튼을 누르고 있으면 앞으로 걸어가요<br>✉️ 편지를 쓰면 나무에 사과로 열려요. 사과를 눌러 읽어보세요</div></div>
 <div id="toast">🎂 생일 축하해요!</div>
 <div id="pan" class="card"><div>✉️ 마음을 적어보세요</div><small>이름과 편지는 이 메타버스를 보는 모두에게 공개돼요</small><input id="nm" maxlength="12" placeholder="이름(별명)" style="margin-top:8px"><textarea id="tx" maxlength="140" rows="4" placeholder="생일 축하 편지를 써보세요"></textarea><div class="row"><button id="sd">🍎 사과로 보내기</button><button id="cn">닫기</button></div></div>
@@ -181,7 +181,7 @@ function bird(){const b=new THREE.Group(),bl=M(0x2f7bff);
 const birds=[bird(),bird()];
 
 // controls
-const keys={};let yaw=0,pitch=0,px=6.15,pz=13;const mv={x:0,y:0};
+const keys={};let yaw=0,pitch=0,px=0,pz=24;const mv={x:0,y:0};
 addEventListener('keydown',e=>{keys[e.code]=1;if(e.code.startsWith('Arrow'))e.preventDefault()});
 addEventListener('keyup',e=>keys[e.code]=0);
 const pts={};
