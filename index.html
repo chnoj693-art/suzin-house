@@ -23,6 +23,9 @@ button:focus-visible{outline:3px solid var(--ovt);outline-offset:2px}
 #zoom.on{display:flex}
 #zoom img{max-width:90vw;max-height:72vh;border:10px solid #fff;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
 #zc{color:#fff;font-size:18px;text-align:center;line-height:1.5}
+#pad{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);display:none;flex-direction:column;gap:12px;z-index:4}
+@media (hover:none) and (pointer:coarse){#pad{display:flex}}
+#pad button{width:72px;height:72px;border-radius:50%;font-size:28px;padding:0;touch-action:none;user-select:none;-webkit-user-select:none;opacity:.9}
 #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 112px);display:none;max-width:90vw;text-align:center;pointer-events:none;font-weight:600}
 #toast{white-space:normal;width:90vw;text-align:center}
 .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -35,12 +38,13 @@ textarea,#nm{width:100%;box-sizing:border-box;border-radius:10px;border:1px soli
 </head>
 <body>
 <div class="hud" id="top"><div class="card"><b>🌼 꽃들판 생일 메타버스</b></div><div class="btns"><button id="lt">✉️ 편지</button><button id="tp">🏠 쉼터</button><button id="mu">🔊</button></div></div>
-<div class="hud" id="bot"><div class="card" id="hint">PC: WASD·방향키 이동(Shift 달리기), 드래그로 둘러보기<br>모바일: 왼쪽 화면 드래그 이동, 오른쪽 화면 드래그 둘러보기<br>✉️ 편지를 쓰면 나무에 사과로 열려요. 사과를 눌러 읽어보세요</div></div>
+<div class="hud" id="bot"><div class="card" id="hint">PC: WASD·방향키 이동(Shift 달리기), 드래그로 둘러보기<br>모바일: 화면을 드래그해서 둘러보고, ▲ 버튼을 누르고 있으면 앞으로 걸어가요<br>✉️ 편지를 쓰면 나무에 사과로 열려요. 사과를 눌러 읽어보세요</div></div>
 <div id="toast">🎂 생일 축하해요!</div>
 <div id="pan" class="card"><div>✉️ 마음을 적어보세요</div><small>이름과 편지는 이 메타버스를 보는 모두에게 공개돼요</small><input id="nm" maxlength="12" placeholder="이름(별명)" style="margin-top:8px"><textarea id="tx" maxlength="140" rows="4" placeholder="생일 축하 편지를 써보세요"></textarea><div class="row"><button id="sd">🍎 사과로 보내기</button><button id="cn">닫기</button></div></div>
 <div id="msg" class="card"></div>
 <div id="zoom"><img id="zi" alt="생일 케이크 그림"><div id="zc">🎂 수진이네 하우스의 생일 케이크<br><small>아무 곳이나 누르면 닫혀요</small></div><div id="zn" style="display:none;gap:12px"><button id="zp">◀ 이전</button><button id="zx">다음 ▶</button></div></div>
 <div id="cap" class="card"></div>
+<div id="pad"><button id="gf" aria-label="앞으로">▲</button><button id="gb" aria-label="뒤로">▼</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -180,7 +184,7 @@ const keys={};let yaw=0,pitch=0,px=6.15,pz=13;const mv={x:0,y:0};
 addEventListener('keydown',e=>{keys[e.code]=1;if(e.code.startsWith('Arrow'))e.preventDefault()});
 addEventListener('keyup',e=>keys[e.code]=0);
 const pts={};
-el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);pts[e.pointerId]={x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,mv:e.pointerType==='touch'&&e.clientX<innerWidth/2}});
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);pts[e.pointerId]={x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,mv:false}});
 el.addEventListener('pointermove',e=>{const p=pts[e.pointerId];if(!p)return;
  if(p.mv){mv.x=clamp((e.clientX-p.sx)/50,-1,1);mv.y=clamp((e.clientY-p.sy)/50,-1,1)}
  else{yaw-=(e.clientX-p.x)*.005;pitch=clamp(pitch-(e.clientY-p.y)*.005,-1.2,1.2);p.x=e.clientX;p.y=e.clientY}});
@@ -367,6 +371,12 @@ function heartTick(dt,t){
 el.addEventListener('click',e=>{if(!dn||Math.hypot(e.clientX-dn[0],e.clientY-dn[1])>6)return;
  ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ndc,cam);
  if(ray.intersectObjects([btn,btnBase,btnLabel])[0]){if(Math.hypot(px-BP.x,pz-BP.z)>9)say('🐶 버튼 가까이 가서 눌러보세요',2.5);else feed()}});
+
+// ---- touch walk buttons
+[['gf',-1],['gb',1]].forEach(([id,v])=>{const b=document.getElementById(id);
+ b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);mv.y=v};
+ b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>{if(mv.y===v)mv.y=0};
+ b.oncontextmenu=e=>e.preventDefault()});
 
 // ---- big trees
 const trees=[[-10,0],[11,-3]],slots=[[],[]];
