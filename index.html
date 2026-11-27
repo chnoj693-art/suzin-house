@@ -29,7 +29,7 @@ button:focus-visible{outline:3px solid var(--ovt);outline-offset:2px}
 #pan,#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(340px,86vw);display:none;box-sizing:border-box;z-index:5;pointer-events:auto}
 #pan.on,#msg.on{display:block}
 #msg{white-space:pre-wrap;font-size:16px;word-break:break-word}
-textarea{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid var(--ovt);padding:8px;font:inherit;background:transparent;color:inherit;margin:8px 0}
+textarea,#nm{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid var(--ovt);padding:8px;font:inherit;background:transparent;color:inherit;margin:8px 0}
 .row{display:flex;gap:8px;justify-content:flex-end}
 </style>
 </head>
@@ -37,11 +37,27 @@ textarea{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid va
 <div class="hud" id="top"><div class="card"><b>🌼 꽃들판 생일 메타버스</b></div><div class="btns"><button id="lt">✉️ 편지</button><button id="tp">🏠 쉼터</button><button id="mu">🔊</button></div></div>
 <div class="hud" id="bot"><div class="card" id="hint">PC: WASD·방향키 이동(Shift 달리기), 드래그로 둘러보기<br>모바일: 왼쪽 화면 드래그 이동, 오른쪽 화면 드래그 둘러보기<br>✉️ 편지를 쓰면 나무에 사과로 열려요. 사과를 눌러 읽어보세요</div></div>
 <div id="toast">🎂 생일 축하해요!</div>
-<div id="pan" class="card"><div>✉️ 마음을 적어보세요</div><textarea id="tx" maxlength="140" rows="4" placeholder="생일 축하 편지를 써보세요"></textarea><div class="row"><button id="sd">🍎 사과로 보내기</button><button id="cn">닫기</button></div></div>
+<div id="pan" class="card"><div>✉️ 마음을 적어보세요</div><small>이름과 편지는 이 메타버스를 보는 모두에게 공개돼요</small><input id="nm" maxlength="12" placeholder="이름(별명)" style="margin-top:8px"><textarea id="tx" maxlength="140" rows="4" placeholder="생일 축하 편지를 써보세요"></textarea><div class="row"><button id="sd">🍎 사과로 보내기</button><button id="cn">닫기</button></div></div>
 <div id="msg" class="card"></div>
 <div id="zoom"><img id="zi" alt="생일 케이크 그림"><div id="zc">🎂 수진이네 하우스의 생일 케이크<br><small>아무 곳이나 누르면 닫혀요</small></div><div id="zn" style="display:none;gap:12px"><button id="zp">◀ 이전</button><button id="zx">다음 ▶</button></div></div>
 <div id="cap" class="card"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* 여기 null 자리에 Firebase 웹앱 설정(firebaseConfig 객체)을 붙여넣으세요.
+   예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." };
+   null 이면 편지는 이 기기에만 저장됩니다. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCR7GVUE2kNcVsK170sZwrcYyJF3hb6Y9A",
+  authDomain: "suzin-house.firebaseapp.com",
+  projectId: "suzin-house",
+  storageBucket: "suzin-house.firebasestorage.app",
+  messagingSenderId: "481970574533",
+  appId: "1:481970574533:web:08e4bb38dd50eaf2b9ccac"
+};
+</script>
 <script>
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const renderer=new THREE.WebGLRenderer({antialias:true});
@@ -363,38 +379,72 @@ trees.forEach(([x,z],ti)=>{
   for(let R=3;R<9;R+=.15){const q=new THREE.Vector3(x,8,z).addScaledVector(d,R);if(sph.every(([a,b,c,r])=>q.distanceTo(new THREE.Vector3(x+a,b,z+c))>r+1.1)){p=q;break}}
   slots[ti].push(p)}});
 
-// ---- apples from letters
-const apples=[],fly=[],saved=[],AS=3.2;
-function makeApple(msg){const g=new THREE.Group();
+// ---- apples from letters (shared through Firebase when FIREBASE_CONFIG is set)
+const apples=[],fly=[],AS=3.2,byId=new Map();let me='local',editing=null,shownId=null,backend;
+const slotPos=n=>slots[n%2][Math.floor(n/2)%60];
+function makeApple(d){const g=new THREE.Group();
  add(new THREE.SphereGeometry(.26,12,10),M(0xe0243a),0,0,0,g);
  add(new THREE.CylinderGeometry(.02,.02,.14,4),M(0x5a2a1a),0,.28,0,g);
  add(new THREE.SphereGeometry(.09,8,6),M(0x3fae3a),.08,.3,0,g).scale.set(1.6,.4,1);
- g.traverse(o=>o.userData.msg=msg);return g}
-function store(){try{localStorage.setItem('apples',JSON.stringify(saved))}catch(e){}}
-function addApple(msg,instant){const i=apples.length,ap=makeApple(msg);ap.position.copy(slots[i%2][Math.floor(i/2)%60]);
- ap.scale.setScalar(instant?AS:.001);ap.visible=!!instant;scene.add(ap);apples.push(ap);saved.push(msg);store();return ap}
-function sendLetter(msg){const ap=addApple(msg,false);
- const L=new THREE.Mesh(new THREE.PlaneGeometry(.5,.35),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));
+ g.traverse(o=>o.userData.id=d.id);return g}
+function pickSlot(){const used=new Set(apples.map(a=>a.userData.d.slot)),free=[];for(let i=0;i<120;i++)if(!used.has(i))free.push(i);return free.length?free[Math.random()*free.length|0]:Math.random()*120|0}
+function launchLetter(ap){const L=new THREE.Mesh(new THREE.PlaneGeometry(.5,.35),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));
  L.position.copy(cam.position).add(new THREE.Vector3(0,0,-1.5).applyEuler(cam.rotation));scene.add(L);
  fly.push({L,ap,a:L.position.clone(),b:ap.position.clone(),t:0})}
+function onAdd(d,isNew){if(byId.has(d.id)){onMod(d);return}
+ const ap=makeApple(d);ap.position.copy(slotPos(d.slot||0));ap.userData.d=d;scene.add(ap);apples.push(ap);byId.set(d.id,ap);
+ if(!isNew){ap.scale.setScalar(AS)}
+ else{ap.scale.setScalar(.001);if(d.uid===me){ap.visible=false;launchLetter(ap)}else ap.userData.pop=0}}
+function onMod(d){const ap=byId.get(d.id);if(!ap)return;ap.userData.d=d;if(shownId===d.id&&msgEl.classList.contains('on'))showMsg(d.id)}
+function onDel(id){const ap=byId.get(id);if(!ap)return;scene.remove(ap);apples.splice(apples.indexOf(ap),1);byId.delete(id);for(let i=fly.length-1;i>=0;i--)if(fly[i].ap===ap){scene.remove(fly[i].L);fly.splice(i,1)}
+ if(shownId===id)msgEl.classList.remove('on')}
 function flyTick(dt){
  for(let i=fly.length-1;i>=0;i--){const f=fly[i];f.t+=dt/2.6;const k=Math.min(f.t,1),e=k*k*(3-2*k);
   f.L.position.lerpVectors(f.a,f.b,e);f.L.position.y+=Math.sin(Math.PI*e)*2.5;f.L.rotation.set(e*8,e*6,e*10);f.L.scale.setScalar(1-e*.7);
   if(f.t>=1){scene.remove(f.L);f.ap.visible=true;f.ap.userData.pop=0;fly.splice(i,1)}}
  apples.forEach(a=>{const p=a.userData.pop;if(p!==undefined&&p<1){a.userData.pop=Math.min(1,p+dt*2.2);const q=a.userData.pop-1;a.scale.setScalar(AS*(1+2.7*q*q*q+1.7*q*q))}})}
-const pan=document.getElementById('pan'),tx=document.getElementById('tx'),msgEl=document.getElementById('msg');
-['keydown','keyup'].forEach(n=>tx.addEventListener(n,e=>e.stopPropagation()));
-document.getElementById('lt').onclick=()=>{pan.classList.add('on');tx.focus();for(const k in keys)keys[k]=0};
+function localBackend(){let list=[];try{list=JSON.parse(localStorage.getItem('apples2')||'[]')}catch(e){}
+ const save=()=>{try{localStorage.setItem('apples2',JSON.stringify(list))}catch(e){}};
+ return{init(){list.forEach(d=>onAdd(d,false))},
+  add(d){d.id='l'+Date.now()+Math.random().toString(36).slice(2,6);d.uid=me;list.push(d);save();onAdd(d,true)},
+  update(id,p){const d=list.find(x=>x.id===id);if(d){Object.assign(d,p);save();onMod(d)}},
+  remove(id){list=list.filter(x=>x.id!==id);save();onDel(id)}}}
+function fbBackend(){firebase.initializeApp(FIREBASE_CONFIG);const col=firebase.firestore().collection('letters'),TS=()=>firebase.firestore.FieldValue.serverTimestamp(),fail=e=>{console.error(e);say('⚠️ 저장에 실패했어요. 잠시 후 다시 해주세요',3.5)};
+ return{init(){let first=true;
+   const go=()=>col.orderBy('createdAt').onSnapshot(snap=>{snap.docChanges().forEach(c=>{const d=Object.assign({id:c.doc.id},c.doc.data());
+     if(c.type==='added')onAdd(d,!first);else if(c.type==='modified')onMod(d);else onDel(c.doc.id)});first=false},e=>{console.error(e);say('⚠️ 편지를 불러오지 못했어요',3.5)});
+   firebase.auth().signInAnonymously().then(u=>{me=u.user.uid;go()}).catch(e=>{console.error(e);go()})},
+  add(d){col.add({name:d.name,msg:d.msg,slot:d.slot,uid:me,createdAt:TS()}).catch(fail)},
+  update(id,p){col.doc(id).update({msg:p.msg,name:p.name,updatedAt:TS()}).catch(fail)},
+  remove(id){col.doc(id).delete().catch(fail)}}}
+const pan=document.getElementById('pan'),tx=document.getElementById('tx'),nmEl=document.getElementById('nm'),msgEl=document.getElementById('msg');
+try{nmEl.value=localStorage.getItem('aname')||''}catch(e){}
+[tx,nmEl].forEach(x=>['keydown','keyup'].forEach(n=>x.addEventListener(n,e=>e.stopPropagation())));
+function openPanel(title,msg){pan.firstElementChild.textContent=title;tx.value=msg;pan.classList.add('on');tx.focus();for(const k in keys)keys[k]=0}
+document.getElementById('lt').onclick=()=>{editing=null;openPanel('✉️ 마음을 적어보세요','')};
 document.getElementById('cn').onclick=()=>pan.classList.remove('on');
-document.getElementById('sd').onclick=()=>{const m=tx.value.trim();if(!m)return;tx.value='';pan.classList.remove('on');sendLetter(m);say('💌 편지가 사과가 되어 나무로 날아가요',3.5)};
+document.getElementById('sd').onclick=()=>{const m=tx.value.trim();if(!m)return;const n=(nmEl.value.trim()||'익명').slice(0,12);
+ try{localStorage.setItem('aname',nmEl.value.trim())}catch(e){}
+ pan.classList.remove('on');tx.value='';
+ if(editing){backend.update(editing,{msg:m,name:n});editing=null;say('✏️ 편지를 고쳤어요',2.5)}
+ else{backend.add({name:n,msg:m,slot:pickSlot()});say('💌 편지가 사과가 되어 나무로 날아가요',3.5)}};
+function showMsg(id){const ap=byId.get(id);if(!ap)return;const d=ap.userData.d;shownId=id;msgEl.innerHTML='';
+ const t=document.createElement('div');t.textContent='🍎 '+d.msg;msgEl.append(t);
+ const w=document.createElement('div');w.style.cssText='margin-top:8px;font-size:13px;opacity:.75;text-align:right';w.textContent='— '+(d.name||'익명');msgEl.append(w);
+ if(d.uid===me){const r=document.createElement('div');r.className='row';r.style.marginTop='8px';
+  const eb=document.createElement('button');eb.textContent='✏️ 수정';eb.onclick=e=>{e.stopPropagation();editing=id;nmEl.value=d.name||'';msgEl.classList.remove('on');openPanel('✏️ 편지 고치기',d.msg)};
+  const db=document.createElement('button');db.textContent='🗑 삭제';db.onclick=e=>{e.stopPropagation();if(confirm('이 편지를 지울까요?')){backend.remove(id);msgEl.classList.remove('on')}};
+  r.append(eb,db);msgEl.append(r)}
+ msgEl.classList.add('on')}
 msgEl.onclick=()=>msgEl.classList.remove('on');
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let dn=null;
 el.addEventListener('pointerdown',e=>dn=[e.clientX,e.clientY]);
 el.addEventListener('click',e=>{if(!dn||Math.hypot(e.clientX-dn[0],e.clientY-dn[1])>6)return;
  ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ndc,cam);
  const hit=ray.intersectObjects(apples.filter(a=>a.visible),true)[0];
- if(hit){msgEl.textContent='🍎 '+hit.object.userData.msg;msgEl.classList.add('on')}else msgEl.classList.remove('on')});
-try{JSON.parse(localStorage.getItem('apples')||'[]').forEach(m=>addApple(m,true))}catch(e){}
+ if(hit)showMsg(hit.object.userData.id);else msgEl.classList.remove('on')});
+try{backend=(typeof FIREBASE_CONFIG==='object'&&FIREBASE_CONFIG&&window.firebase)?fbBackend():localBackend()}catch(e){console.error(e);backend=localBackend()}
+backend.init();
 
 // ---- puppy
 const dog=new THREE.Group(),tan=M(0xd9a066),brn=M(0x7a4a22),blk=M(0x222222);
