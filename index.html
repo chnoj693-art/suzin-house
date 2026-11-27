@@ -409,11 +409,11 @@ function localBackend(){let list=[];try{list=JSON.parse(localStorage.getItem('ap
   add(d){d.id='l'+Date.now()+Math.random().toString(36).slice(2,6);d.uid=me;list.push(d);save();onAdd(d,true)},
   update(id,p){const d=list.find(x=>x.id===id);if(d){Object.assign(d,p);save();onMod(d)}},
   remove(id){list=list.filter(x=>x.id!==id);save();onDel(id)}}}
-function fbBackend(){firebase.initializeApp(FIREBASE_CONFIG);const col=firebase.firestore().collection('letters'),TS=()=>firebase.firestore.FieldValue.serverTimestamp(),fail=e=>{console.error(e);say('⚠️ 저장에 실패했어요. 잠시 후 다시 해주세요',3.5)};
+function fbBackend(){firebase.initializeApp(FIREBASE_CONFIG);const col=firebase.firestore().collection('letters'),TS=()=>firebase.firestore.FieldValue.serverTimestamp(),fail=e=>{console.error(e);say('⚠️ 저장 실패: '+(e.code||e.message),7)};
  return{init(){let first=true;
    const go=()=>col.orderBy('createdAt').onSnapshot(snap=>{snap.docChanges().forEach(c=>{const d=Object.assign({id:c.doc.id},c.doc.data());
-     if(c.type==='added')onAdd(d,!first);else if(c.type==='modified')onMod(d);else onDel(c.doc.id)});first=false},e=>{console.error(e);say('⚠️ 편지를 불러오지 못했어요',3.5)});
-   firebase.auth().signInAnonymously().then(u=>{me=u.user.uid;go()}).catch(e=>{console.error(e);go()})},
+     if(c.type==='added')onAdd(d,!first);else if(c.type==='modified')onMod(d);else onDel(c.doc.id)});first=false},e=>{console.error(e);say('⚠️ 불러오기 실패: '+(e.code||e.message),7)});
+   firebase.auth().signInAnonymously().then(u=>{me=u.user.uid;go()}).catch(e=>{console.error(e);say('⚠️ 로그인 실패: '+(e.code||e.message),7);go()})},
   add(d){col.add({name:d.name,msg:d.msg,slot:d.slot,uid:me,createdAt:TS()}).catch(fail)},
   update(id,p){col.doc(id).update({msg:p.msg,name:p.name,updatedAt:TS()}).catch(fail)},
   remove(id){col.doc(id).delete().catch(fail)}}}
